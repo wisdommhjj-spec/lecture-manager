@@ -9,6 +9,17 @@ export default function SettingsPage() {
   const { data, update } = useStore();
   const fileRef = useRef<HTMLInputElement>(null);
   const [mail, setMail] = useState<{ configured: boolean; testMode: boolean; testRecipient: string } | null>(null);
+  const [code, setCode] = useState("");
+  const [check, setCheck] = useState<{ ok?: boolean; login?: string; user?: string; issues?: string[]; error?: string } | null>(null);
+  async function runCheck() {
+    setCheck({ login: "점검 중…" });
+    try {
+      const r = await fetch("/api/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ check: true, passcode: code }) });
+      setCheck(await r.json());
+    } catch {
+      setCheck({ error: "서버에 연결하지 못했습니다." });
+    }
+  }
   useEffect(() => {
     fetch("/api/send").then((r) => r.json()).then(setMail).catch(() => {});
   }, []);
@@ -53,6 +64,33 @@ export default function SettingsPage() {
         <p className="text-xs text-muted">
           보내는 메일 계정과 비밀번호는 보안을 위해 화면이 아니라 서버 설정(환경 변수 GMAIL_USER, GMAIL_APP_PASSWORD)에서 바꿉니다. 바움 대표 메일로 바꿀 때는 README의 &quot;메일 계정 바꾸기&quot;를 따라 하세요.
         </p>
+        <div className="flex flex-wrap items-end gap-2 rounded border border-line bg-bg p-3">
+          <label className="label">
+            발송 암호
+            <input className="input w-48" type="password" value={code} onChange={(e) => setCode(e.target.value)} />
+          </label>
+          <button className="btn" onClick={runCheck}>
+            메일 설정 점검
+          </button>
+          {check && (
+            <div className="basis-full text-sm">
+              {check.error ? (
+                <span className="text-bad">{check.error}</span>
+              ) : (
+                <>
+                  <div>
+                    Gmail 로그인: <b className={check.ok ? "text-ok" : check.login === "점검 중…" ? "" : "text-bad"}>{check.login}</b> {check.user && <span className="text-muted">({check.user})</span>}
+                  </div>
+                  {check.issues?.map((t) => (
+                    <div key={t} className="text-bad">
+                      ⚠ {t}
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
+        </div>
         <div className="grid gap-3 sm:grid-cols-2">
           {field("mail", "senderName", "보내는 사람 이름")}
           {field("mail", "cc", "기본 참조 메일 (쉼표로 여러 개)")}
