@@ -94,8 +94,8 @@ function Package({ data, l }: { data: AppData; l: Lecture }) {
     <div className="grid gap-4">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <Link href="/schedule" className="text-xs text-muted hover:text-accent">
-            ← 일정
+          <Link href="/documents" className="text-xs text-muted hover:text-accent">
+            ← 행정서류
           </Link>
           <h1 className="h1">서류 패키지 · 최종 확인</h1>
           <p className="muted">

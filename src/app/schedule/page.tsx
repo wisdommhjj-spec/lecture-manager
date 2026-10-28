@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useStore } from "@/lib/store";
 import type { Lecture } from "@/lib/types";
 import { WEEK, instructorsOf, orgOf } from "@/lib/package";
-import LectureCard from "@/components/LectureCard";
+import { LectureList } from "@/components/LectureCard";
 import LectureEditor, { blankLecture } from "@/components/LectureEditor";
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -67,17 +67,10 @@ function Schedule() {
     close();
   }
 
-  const grouped: [string, Lecture[]][] = [];
-  list.forEach((l) => {
-    const g = grouped.at(-1);
-    if (g && g[0] === l.date) g[1].push(l);
-    else grouped.push([l.date, [l]]);
-  });
-
   return (
     <div className="grid gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="h1">출강 일정</h1>
+        <h1 className="h1">교육·일정관리</h1>
         <button className="btn btn-primary" onClick={() => setEditing({ l: blankLecture(data, view === "cal" ? sel : undefined), isNew: true })}>
           강의의뢰 등록
         </button>
@@ -85,7 +78,7 @@ function Schedule() {
       <div className="flex flex-wrap gap-2">
         <div className="flex gap-1">
           {(["list", "cal"] as const).map((v) => (
-            <button key={v} className={`btn ${view === v ? "btn-primary" : ""}`} aria-pressed={view === v} onClick={() => setView(v)}>
+            <button key={v} className={`btn ${view === v ? "border-accent bg-accent-soft text-accent" : ""}`} aria-pressed={view === v} onClick={() => setView(v)}>
               {v === "list" ? "목록" : "달력"}
             </button>
           ))}
@@ -108,29 +101,13 @@ function Schedule() {
       ) : null}
 
       {view === "list" ? (
-        grouped.length ? (
-          grouped.map(([date, ls]) => (
-            <section key={date} className="grid grid-cols-[52px_minmax(0,1fr)] gap-3">
-              <DateTile iso={date} />
-              <div className="grid gap-2">
-                {ls.map((l) => (
-                  <LectureCard key={l.id} data={data} l={l} onEdit={() => setEditing({ l, isNew: false })} />
-                ))}
-              </div>
-            </section>
-          ))
-        ) : (
-          <div className="card text-center text-muted">조건에 맞는 일정이 없습니다.</div>
-        )
+        <LectureList data={data} list={list} onEdit={(l) => setEditing({ l, isNew: false })} empty="조건에 맞는 일정이 없습니다." />
       ) : (
         <div className="grid gap-2">
           <h2 className="h2">
             {Number(sel.slice(5, 7))}월 {Number(sel.slice(8))}일 출강
           </h2>
-          {list.filter((l) => l.date === sel).map((l) => (
-            <LectureCard key={l.id} data={data} l={l} onEdit={() => setEditing({ l, isNew: false })} />
-          ))}
-          {!list.some((l) => l.date === sel) && <div className="card text-center text-muted">이 날은 출강이 없습니다.</div>}
+          <LectureList data={data} list={list.filter((l) => l.date === sel)} onEdit={(l) => setEditing({ l, isNew: false })} empty="이 날은 출강이 없습니다." />
         </div>
       )}
 
@@ -148,19 +125,6 @@ function Schedule() {
           }}
         />
       )}
-    </div>
-  );
-}
-
-function DateTile({ iso }: { iso: string }) {
-  const [y, m, d] = iso.split("-").map(Number);
-  const wd = new Date(y, m - 1, d).getDay();
-  const today = iso === todayIso();
-  return (
-    <div className={`sticky top-2 self-start rounded-lg border py-1.5 text-center ${today ? "border-accent bg-accent text-accent-ink" : "border-line bg-surface"}`}>
-      <small className="block text-[11px] opacity-75">{m}월</small>
-      <b className="block text-xl leading-tight tabular-nums">{d}</b>
-      <span className={`text-xs ${!today && wd === 0 ? "text-bad" : ""}`}>{today ? "오늘" : WEEK[wd]}</span>
     </div>
   );
 }
@@ -207,7 +171,7 @@ function Calendar({
             <button
               key={i}
               onClick={() => setSel(iso)}
-              className={`flex min-h-16 min-w-0 flex-col gap-0.5 overflow-hidden rounded-md border p-1 text-left ${iso === sel ? "border-accent outline-2 outline-accent" : "border-line"} bg-surface`}
+              className={`flex min-h-16 min-w-0 flex-col gap-0.5 overflow-hidden rounded border p-1 text-left ${iso === sel ? "border-accent outline-2 outline-accent" : "border-line"} bg-surface`}
             >
               <span className={`text-xs font-bold ${i % 7 === 0 ? "text-bad" : ""}`}>{d}</span>
               {ls.slice(0, 2).map((l) => (

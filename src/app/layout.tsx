@@ -19,8 +19,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body className="antialiased">
         <StoreProvider>
-          <Nav />
-          <main className="mx-auto max-w-6xl px-4 pt-5 pb-16">{children}</main>
+          <Nav>{children}</Nav>
         </StoreProvider>
       </body>
     </html>

@@ -16,7 +16,7 @@ export default function Orgs() {
   return (
     <div className="grid gap-3">
       <div className="flex items-center justify-between">
-        <h1 className="h1">기관 ({data.orgs.length}곳)</h1>
+        <h1 className="h1">기관관리 <span className="text-base font-normal text-muted">{data.orgs.length}곳</span></h1>
         <button className="btn btn-primary" onClick={add}>
           기관 추가
         </button>

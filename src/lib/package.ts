@@ -152,3 +152,21 @@ export function fillTemplate(tpl: string, data: AppData, l: Lecture, files: stri
   };
   return tpl.replace(/\{(.+?)\}/g, (m, k) => (k in map ? map[k] : m));
 }
+
+export type DocStatus = { kind: "sent" | "ready" | "check"; label: string; note?: string; at?: string };
+
+/** 목록에 보여 줄 서류 상태: 발송완료 / 미발송(바로 보낼 수 있음) / 확인필요(경고 있음) */
+export function docStatus(data: AppData, l: Lecture): DocStatus {
+  const last = l.sendLogs.at(-1);
+  if (last) return { kind: "sent", label: last.testMode ? "발송완료(테스트)" : "발송완료", at: last.at };
+  const w = checkPackage(data, l, buildLessonPlan(data, l), orgOf(data, l)?.contactEmail ?? "");
+  if (w.length) return { kind: "check", label: "확인필요", note: w[0].text.replace(/\.$/, "") + (w.length > 1 ? ` 외 ${w.length - 1}건` : "") };
+  return { kind: "ready", label: "미발송" };
+}
+
+export function shortInstructors(data: AppData, l: Lecture) {
+  const lead = leadOf(data, l);
+  const n = l.instructorIds.length;
+  if (!n) return "미배정";
+  return `${lead?.name ?? instructorsOf(data, l)[0]?.name ?? ""}${n > 1 ? ` 외 ${n - 1}` : ""}`;
+}

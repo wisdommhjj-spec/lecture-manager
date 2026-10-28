@@ -4,6 +4,7 @@ import Link from "next/link";
 import { uid, useStore } from "@/lib/store";
 import type { Curriculum, PlanSession } from "@/lib/types";
 import { FileUpload } from "@/components/Files";
+import PageHead, { DocTabs } from "@/components/PageHead";
 
 export default function Vault() {
   const { data, update } = useStore();
@@ -15,8 +16,8 @@ export default function Vault() {
 
   return (
     <div className="grid gap-4">
-      <h1 className="h1">보관함</h1>
-      <p className="muted">한 번 올려 두면 서류 패키지를 만들 때마다 자동으로 들어갑니다.</p>
+      <PageHead title="행정서류" desc="한 번 올려 두면 서류 패키지를 만들 때마다 자동으로 들어갑니다." />
+      <DocTabs on="vault" />
 
       <section className="card grid gap-3">
         <h2 className="h2">회사 서류</h2>

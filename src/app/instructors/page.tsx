@@ -27,7 +27,7 @@ export default function Instructors() {
   return (
     <div className="grid gap-3">
       <div className="flex items-center justify-between">
-        <h1 className="h1">강사 ({data.instructors.length}명)</h1>
+        <h1 className="h1">강사관리 <span className="text-base font-normal text-muted">{data.instructors.length}명</span></h1>
         <button className="btn btn-primary" onClick={() => setEdit(blank())}>
           강사 추가
         </button>
