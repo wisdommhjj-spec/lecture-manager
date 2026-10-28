@@ -11,7 +11,7 @@ const env = () => ({
   user: process.env.GMAIL_USER ?? "",
   pass: process.env.GMAIL_APP_PASSWORD ?? "",
   testTo: process.env.MAIL_TEST_RECIPIENT ?? "",
-  passcode: process.env.SEND_PASSCODE ?? "",
+  passcode: (process.env.SEND_PASSCODE ?? "").trim(),
 });
 
 const mask = (s: string) => s.replace(/^(.{2}).*(@.*)$/, "$1***$2");
@@ -39,7 +39,8 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "요청 형식이 잘못되었습니다." }, { status: 400 });
   }
-  if (e.passcode && b.passcode !== e.passcode) {
+  // 앞뒤 공백은 무시합니다 (복사·붙여 넣기 때 섞여 들어가는 경우)
+  if (e.passcode && (b.passcode ?? "").trim() !== e.passcode) {
     return NextResponse.json({ error: "발송 암호가 맞지 않습니다." }, { status: 403 });
   }
   const to = e.testTo || (b.to ?? "").trim();
