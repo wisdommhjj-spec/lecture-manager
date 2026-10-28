@@ -11,6 +11,9 @@ import {
 import { buildZip, download } from "@/lib/zip";
 import { FilePreview } from "@/components/Files";
 
+// 발송 결과와 이력에는 주소 일부를 가립니다 (화면 캡처·데모 영상에 주소가 드러나지 않게)
+const maskEmail = (s: string) => s.replace(/([^\s,@]{2})[^\s,@]*@/g, "$1***@");
+
 interface MailStatus {
   configured: boolean;
   testMode: boolean;
@@ -81,7 +84,7 @@ function Package({ data, l }: { data: AppData; l: Lecture }) {
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || "메일을 보내지 못했습니다.");
       log({ at: new Date().toISOString(), to: j.to, cc: j.cc ?? "", zipName, files: z.names, testMode: j.testMode });
-      setResult({ ok: true, text: `${j.to} 로 메일을 보냈습니다${j.testMode ? " (테스트 모드)" : ""}. zip은 내 컴퓨터에도 저장했습니다.` });
+      setResult({ ok: true, text: `${maskEmail(j.to)} 로 메일을 보냈습니다${j.testMode ? " (테스트 모드)" : ""}. zip은 내 컴퓨터에도 저장했습니다.` });
       setChecked(false);
     } catch (e) {
       setResult({ ok: false, text: e instanceof Error ? e.message : "처리하지 못했습니다." });
@@ -250,8 +253,8 @@ function Package({ data, l }: { data: AppData; l: Lecture }) {
                 <tr key={s.at}>
                   <td className="whitespace-nowrap">{new Date(s.at).toLocaleString("ko-KR")}</td>
                   <td>
-                    {s.to}
-                    {s.cc && <small className="block text-muted">참조 {s.cc}</small>}
+                    {maskEmail(s.to)}
+                    {s.cc && <small className="block text-muted">참조 {maskEmail(s.cc)}</small>}
                     {s.testMode && <span className="chip chip-warn ml-1">테스트</span>}
                   </td>
                   <td>
