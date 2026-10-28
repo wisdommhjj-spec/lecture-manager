@@ -41,8 +41,8 @@
 필요한 것: Node.js 20 이상
 
 ```bash
-git clone https://github.com/wisdommhjj-spec/chulgang-manager.git
-cd chulgang-manager
+git clone https://github.com/wisdommhjj-spec/lecture-manager.git
+cd lecture-manager
 npm install
 cp .env.example .env.local   # 메일을 보내려면 값 채우기 (아래 참고)
 npm run dev
