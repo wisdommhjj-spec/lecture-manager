@@ -64,6 +64,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, to, cc, testMode: !!e.testTo, messageId: info.messageId });
   } catch (err) {
     console.error("mail send failed", err);
-    return NextResponse.json({ error: "메일을 보내지 못했습니다. 계정 설정(앱 비밀번호)을 확인하세요." }, { status: 502 });
+    // 원인을 알 수 있게 오류 종류만 알려 줍니다 (계정 정보는 내보내지 않음)
+    const x = err as { code?: string; responseCode?: number };
+    const reason =
+      x.code === "EAUTH" || x.responseCode === 535 || x.responseCode === 534
+        ? "Gmail 로그인에 실패했습니다. GMAIL_USER(전체 Gmail 주소)와 GMAIL_APP_PASSWORD(앱 비밀번호 16자, 띄어쓰기 없이)를 확인하세요."
+        : x.code === "EENVELOPE"
+          ? "받는 사람 주소를 Gmail이 거부했습니다."
+          : x.code === "ESOCKET" || x.code === "ETIMEDOUT" || x.code === "ECONNECTION"
+            ? "Gmail 서버에 연결하지 못했습니다. 잠시 뒤 다시 시도하세요."
+            : "메일을 보내지 못했습니다. 계정 설정(앱 비밀번호)을 확인하세요.";
+    return NextResponse.json({ error: `${reason} (오류 코드: ${x.code ?? "-"}${x.responseCode ? ` ${x.responseCode}` : ""})` }, { status: 502 });
   }
 }
