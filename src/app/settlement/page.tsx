@@ -8,6 +8,7 @@ import {
 import type { Lecture } from "@/lib/types";
 import PageHead from "@/components/PageHead";
 import PrintPreview from "@/components/PrintPreview";
+import { OrgButton } from "@/components/LectureEditorHost";
 import { statementHtml } from "@/lib/statement";
 
 /**
@@ -23,12 +24,25 @@ export default function Settlement() {
   const [m, setM] = useState(() => new Date().toISOString().slice(0, 7));
   const [tab, setTab] = useState<"collect" | "pay" | "stmt">("collect");
   const [who, setWho] = useState("all");
+  const [q, setQ] = useState("");
   if (!data) return <p className="muted">불러오는 중…</p>;
-  const month = months.includes(m) ? m : (months.at(-1) ?? m);
+  const month = m === "all" || months.includes(m) ? m : (months.at(-1) ?? m);
   const rate = donationRateOf(data);
 
-  const ls = data.lectures.filter((l) => l.date.startsWith(month)).sort((a, b) => a.date.localeCompare(b.date));
   const name = (id: string) => data.instructors.find((i) => i.id === id)?.name ?? id;
+  // 검색: 기관, 대상, 과목, 장소, 강사 이름, 계좌(법인/개인), 상태, 메모 중 하나라도 포함하면 보입니다. 띄어쓰기로 여러 단어를 쓰면 모두 포함된 건만 남습니다.
+  const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const hit = (l: Lecture) => {
+    if (!words.length) return true;
+    const hay = [
+      orgOf(data, l)?.name, l.target, l.subject, l.place, l.note,
+      l.account === "corp" ? "법인 법인계좌" : "개인 개인계좌",
+      SETTLE_LABEL[settleStatus(l)],
+      ...l.instructorIds.map(name),
+    ].join(" ").toLowerCase();
+    return words.every((w) => hay.includes(w));
+  };
+  const ls = data.lectures.filter((l) => (month === "all" || l.date.startsWith(month)) && hit(l)).sort((a, b) => a.date.localeCompare(b.date));
 
   const patch = (id: string, fn: (l: Lecture) => Lecture) =>
     update((d) => ({ ...d, lectures: d.lectures.map((l) => (l.id === id ? fn(l) : l)) }));
@@ -106,8 +120,17 @@ export default function Settlement() {
         title="정산관리"
         desc={`강사료 = 1차시 단가 × 강사별 차시 수 · 후원금 ${rate}% · 날짜는 직접 선택해 기록합니다.`}
         right={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              className="input w-56"
+              type="search"
+              placeholder="기관, 대상, 강사, 상태 검색"
+              aria-label="정산 검색"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
             <select className="input w-auto" value={month} onChange={(e) => setM(e.target.value)} aria-label="월">
+              <option value="all">전체 기간</option>
               {months.map((x) => (
                 <option key={x} value={x}>
                   {x.slice(0, 4)}년 {Number(x.slice(5))}월
@@ -164,7 +187,9 @@ export default function Settlement() {
               return (
                 <tr key={l.id}>
                   <td className="tabular-nums">{l.date.slice(5).replace("-", ".")}</td>
-                  <td>{orgOf(data, l)?.name}</td>
+                  <td>
+                    <OrgButton id={l.id}>{orgOf(data, l)?.name}</OrgButton>
+                  </td>
                   <td>{l.account === "corp" ? "법인" : "개인"}</td>
                   <td className="text-right tabular-nums">{t == null ? <span className="text-warn">단가 미정</span> : won(t)}</td>
                   <td className={`font-medium ${tone(st)}`}>{SETTLE_LABEL[st]}</td>
@@ -191,7 +216,9 @@ export default function Settlement() {
               ))}
             </select>
           </div>
-          {insIds.length ? (
+          {month === "all" ? (
+            <p className="muted">명세서는 달별로 만들어집니다. 위쪽에서 달을 골라 주세요.</p>
+          ) : insIds.length ? (
             <PrintPreview html={statementHtml(data, who === "all" || !insIds.includes(who) ? insIds : [who], month)} height={720} />
           ) : (
             <p className="muted">이 달에 배정된 강사가 없습니다.</p>
@@ -241,7 +268,9 @@ export default function Settlement() {
                     return (
                       <tr key={l.id}>
                         <td className="tabular-nums">{l.date.slice(5).replace("-", ".")}</td>
-                        <td>{orgOf(data, l)?.name}</td>
+                        <td>
+                          <OrgButton id={l.id}>{orgOf(data, l)?.name}</OrgButton>
+                        </td>
                         <td className="text-right">
                           <input
                             className="input w-16 py-1 text-right"
@@ -269,7 +298,7 @@ export default function Settlement() {
             </div>
           );
         })}
-        {!insIds.length && <p className="muted">이 달에는 출강이 없습니다.</p>}
+        {!insIds.length && <p className="muted">{words.length ? "검색 결과가 없습니다." : "이 달에는 출강이 없습니다."}</p>}
       </section>
       )}
       <p className="text-xs text-muted">
