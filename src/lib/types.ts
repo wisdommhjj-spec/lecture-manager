@@ -54,6 +54,12 @@ export interface Lecture {
   personalAccountId?: string; // 개인계좌 요청 시 대상 강사
   note: string;
   sendLogs: SendLog[];
+  /** 정산: 강사별 차시 수(없으면 lecture.sessions). 키는 강사 id */
+  units?: Record<string, number>;
+  invoiceDate?: string; // 계산서 발행일 yyyy-mm-dd
+  depositDate?: string; // 기관 입금일
+  payouts?: Record<string, string>; // 법인계좌: 조합이 강사에게 지급한 날 (강사 id → 날짜)
+  donations?: Record<string, string>; // 개인계좌: 강사가 후원금을 낸 날 (강사 id → 날짜)
 }
 
 export interface PlanTopic {
@@ -91,6 +97,7 @@ export interface Settings {
     subjectTemplate: string;
     bodyTemplate: string;
   };
+  donationRate?: number; // 후원금 비율(%), 기본 20
   corpBank: { bankName: string; accountNumber: string; holder: string };
   businessRegistration?: StoredFile;
   corpAccountCopy?: StoredFile;

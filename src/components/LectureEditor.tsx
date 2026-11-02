@@ -35,6 +35,7 @@ export default function LectureEditor({
 }) {
   const [l, setL] = useState<Lecture>(initial);
   const [err, setErr] = useState("");
+  const [invOpen, setInvOpen] = useState(false);
   const set = <K extends keyof Lecture>(k: K, v: Lecture[K]) => setL((x) => ({ ...x, [k]: v }));
 
   function toggle(id: string) {
@@ -172,6 +173,34 @@ export default function LectureEditor({
           </label>
         </div>
         <p className="mt-2 min-h-5 text-sm text-bad">{err}</p>
+        {!isNew && (
+          <div className="mt-1 flex flex-wrap items-center gap-2 rounded border border-line bg-bg px-3 py-2 text-sm">
+            <button type="button" className="btn btn-sm" onClick={() => setInvOpen((v) => !v)} aria-expanded={invOpen}>
+              계산서 발행
+            </button>
+            <span className="text-muted">
+              {l.invoiceDate ? `발행일 ${l.invoiceDate}` : "아직 발행 전"}
+              {l.depositDate ? ` · 입금일 ${l.depositDate}` : ""}
+            </span>
+            {invOpen && (
+              <span className="flex w-full flex-wrap items-center gap-2">
+                <label className="flex items-center gap-1">
+                  발행일
+                  <input className="input w-40 py-1" type="date" value={l.invoiceDate ?? ""} onChange={(e) => set("invoiceDate", e.target.value || undefined)} />
+                </label>
+                <button type="button" className="btn btn-sm" onClick={() => set("invoiceDate", new Date().toISOString().slice(0, 10))}>
+                  오늘
+                </button>
+                {l.invoiceDate && (
+                  <button type="button" className="btn btn-sm text-bad" onClick={() => set("invoiceDate", undefined)}>
+                    지우기
+                  </button>
+                )}
+                <span className="text-xs text-muted">저장을 눌러야 반영됩니다. 입금일은 정산관리에서 기록합니다.</span>
+              </span>
+            )}
+          </div>
+        )}
         <div className="mt-2 flex flex-wrap justify-between gap-2">
           <div>
             {!isNew && (

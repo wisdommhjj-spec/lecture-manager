@@ -5,7 +5,7 @@ import { use, useEffect, useMemo, useState } from "react";
 import { useStore } from "@/lib/store";
 import type { AppData, Lecture, LessonPlan, SendLog } from "@/lib/types";
 import {
-  accountCopyOf, buildLessonPlan, checkPackage, dateLabel, feeTotal, fillTemplate, instructorsOf,
+  accountCopyOf, buildLessonPlan, checkPackage, dateLabel, feeTotal, totalUnits, fillTemplate, instructorsOf,
   orgOf, packageFiles, won, zipNameOf,
 } from "@/lib/package";
 import { buildZip, download } from "@/lib/zip";
@@ -398,7 +398,7 @@ function QuotePreview({ data, l }: { data: AppData; l: Lecture }) {
             <td className={td}>
               {l.target} · {l.sessions}차시 × {n}명
             </td>
-            <td className={td}>{n * l.sessions}</td>
+            <td className={td}>{totalUnits(l)}</td>
             <td className={td}>{won(l.unitPrice)}</td>
             <td className={td}>{won(total)}</td>
           </tr>
