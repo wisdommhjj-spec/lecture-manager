@@ -46,7 +46,7 @@ function Schedule() {
       .filter((l) => m === "all" || l.date.startsWith(m))
       .filter((l) => {
         if (!q) return true;
-        const t = [orgOf(data, l)?.name, l.target, l.subject, l.note, ...instructorsOf(data, l).map((i) => i.name)].join(" ");
+        const t = [orgOf(data, l)?.name, l.area, l.source, l.period, l.target, l.subject, l.note, ...instructorsOf(data, l).map((i) => i.name)].join(" ");
         return t.includes(q);
       })
       .sort((a, b) => a.date.localeCompare(b.date));

@@ -50,7 +50,10 @@ export function LectureTable({ data, list }: { data: AppData; list: Lecture[] })
                 <td className="whitespace-nowrap">
                   <OrgButton id={l.id}>{orgOf(data, l)?.name ?? "기관 미정"}</OrgButton>
                 </td>
-                <td className="whitespace-nowrap">{l.target}</td>
+                <td className="whitespace-nowrap">
+                  {l.target}
+                  {l.period && <div className="text-xs text-muted">{l.period}</div>}
+                </td>
                 <td className="whitespace-nowrap">
                   {l.subject} <span className="text-muted">{l.sessions}차시</span>
                 </td>
@@ -87,7 +90,7 @@ export default function LectureCard({ data, l }: { data: AppData; l: Lecture }) 
         <span className={`rounded-md px-2 py-0.5 text-[11.5px] font-bold ${CHIP[s.kind]}`}>{s.label}</span>
       </div>
       <div className="mt-1 text-[12.5px] text-muted">
-        {dayOf(l.date)} · {l.target} {l.sessions}차시 · {shortInstructors(data, l)} · {won(fee)}
+        {dayOf(l.date)} · {l.target} {l.sessions}차시{l.period ? ` (${l.period})` : ""} · {shortInstructors(data, l)} · {won(fee)}
       </div>
       {s.note && <div className="mt-1.5 text-xs text-bad">⚠ {s.note}</div>}
       <div className="mt-3 flex gap-2">

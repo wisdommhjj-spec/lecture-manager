@@ -47,6 +47,9 @@ export interface Lecture {
   place: string; // 장소
   sessions: number; // 차시 수
   minutesPerSession: number;
+  area?: string; // 지역·구 (비우면 기관의 지역)
+  source?: string; // 사업·의뢰처
+  period?: string; // 몇 교시·시간 (예: 3~4교시 10:00~11:20)
   leadId: string;
   instructorIds: string[];
   unitPrice: number | null; // 강사 1인 1차시 단가

@@ -35,7 +35,7 @@ export default function Settlement() {
   const hit = (l: Lecture) => {
     if (!words.length) return true;
     const hay = [
-      orgOf(data, l)?.name, l.target, l.subject, l.place, l.note,
+      orgOf(data, l)?.name, l.area, orgOf(data, l)?.area, l.source, l.period, l.target, l.subject, l.place, l.note,
       l.account === "corp" ? "법인 법인계좌" : "개인 개인계좌",
       SETTLE_LABEL[settleStatus(l)],
       ...l.instructorIds.map(name),
@@ -77,7 +77,7 @@ export default function Settlement() {
 
   function csv() {
     const rows: (string | number)[][] = [
-      ["출강일", "기관", "강사", "차시", "1차시 단가", "강사료", `후원금(${rate}%)`, "계좌", "지급/납부 금액", "지급/납부일", "계산서 발행일", "입금일", "상태"],
+      ["출강일", "기관", "지역·구", "사업·의뢰처", "교시·시간", "강사", "차시", "1차시 단가", "강사료", `후원금(${rate}%)`, "계좌", "지급/납부 금액", "지급/납부일", "계산서 발행일", "입금일", "상태"],
     ];
     ls.forEach((l) =>
       l.instructorIds.forEach((id) => {
@@ -85,7 +85,7 @@ export default function Settlement() {
         const don = fee == null ? null : donationOf(fee, rate);
         const corp = l.account === "corp";
         rows.push([
-          l.date, orgOf(data!, l)?.name ?? "", name(id), unitsOf(l, id), l.unitPrice ?? "", fee ?? "", don ?? "",
+          l.date, orgOf(data!, l)?.name ?? "", l.area ?? orgOf(data!, l)?.area ?? "", l.source ?? "", l.period ?? "", name(id), unitsOf(l, id), l.unitPrice ?? "", fee ?? "", don ?? "",
           corp ? "법인" : "개인",
           fee == null || don == null ? "" : corp ? fee - don : don,
           (corp ? l.payouts?.[id] : l.donations?.[id]) ?? "",

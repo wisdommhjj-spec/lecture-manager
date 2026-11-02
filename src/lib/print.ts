@@ -1,5 +1,5 @@
 import type { AppData, Meeting } from "./types";
-import { dateLabel, feeTotal, instructorsOf, orgOf, totalUnits, won } from "./package";
+import { dateLabel, feeTotal, instructorsOf, orgOf, totalUnits, unitsOf, won } from "./package";
 
 /** 회의용 인쇄물(A4 세로)을 HTML 문자열로 만듭니다. 미리보기와 인쇄(PDF 저장)에 같이 씁니다. */
 
@@ -67,13 +67,17 @@ export function scheduleHtml(data: AppData, from: string, to: string, withFee: b
       const day = l.date !== lastDate ? `<tr class="day"><td colspan="${cols}">${esc(dateLabel(l.date))}</td></tr>` : "";
       lastDate = l.date;
       const names = instructorsOf(data, l)
-        .map((i) => (i.id === l.leadId ? `<span class="lead">${esc(i.name)}</span>` : esc(i.name)))
+        .map((i) => {
+          const n = unitsOf(l, i.id);
+          const nm = i.id === l.leadId ? `<span class="lead">${esc(i.name)}</span>` : esc(i.name);
+          return n !== l.sessions ? `${nm}<span class="mut">(${n}차시)</span>` : nm; // 강사별로 차시가 다르면 표시
+        })
         .join(", ");
       const total = feeTotal(l);
       const fee = withFee
         ? `<td class="r">${total == null ? '<span class="un">단가 미정</span>' : `${won(total)}<div class="mut">${won(l.unitPrice)} × ${totalUnits(l)}차시</div>`}</td>`
         : "";
-      return `${day}<tr><td>${esc(orgOf(data, l)?.name ?? "")}</td><td>${esc(l.target)}<div class="mut">${l.sessions}차시 · ${l.minutesPerSession}분</div></td><td>${esc(l.subject)}${l.place ? `<div class="mut">${esc(l.place)}</div>` : ""}</td><td>${names || '<span class="un">미배정</span>'}</td>${fee}</tr>`;
+      return `${day}<tr><td>${esc(orgOf(data, l)?.name ?? "")}${[l.area ?? orgOf(data, l)?.area, l.source].filter(Boolean).length ? `<div class="mut">${esc([l.area ?? orgOf(data, l)?.area, l.source].filter(Boolean).join(" · "))}</div>` : ""}</td><td>${esc(l.target)}<div class="mut">${l.period ? `${esc(l.period)} · ` : ""}${l.sessions}차시 · ${l.minutesPerSession}분</div></td><td>${esc(l.subject)}${l.place ? `<div class="mut">${esc(l.place)}</div>` : ""}</td><td>${names || '<span class="un">미배정</span>'}</td>${fee}</tr>`;
     })
     .join("");
   const sum = withFee ? ls.reduce((s, l) => s + (feeTotal(l) ?? 0), 0) : 0;

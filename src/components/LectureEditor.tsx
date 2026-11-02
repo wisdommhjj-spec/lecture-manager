@@ -44,7 +44,9 @@ export default function LectureEditor({
       const ids = has ? x.instructorIds.filter((i) => i !== id) : [...x.instructorIds, id];
       const leadId = ids.includes(x.leadId) ? x.leadId : (ids[0] ?? "");
       const personalAccountId = x.personalAccountId && ids.includes(x.personalAccountId) ? x.personalAccountId : undefined;
-      return { ...x, instructorIds: ids, leadId, personalAccountId };
+      const units = { ...(x.units ?? {}) };
+      if (has) delete units[id];
+      return { ...x, instructorIds: ids, leadId, personalAccountId, units };
     });
   }
 
@@ -76,6 +78,19 @@ export default function LectureEditor({
             </select>
           </label>
           <label className="label">
+            지역·구
+            <input
+              className="input"
+              placeholder={data.orgs.find((o) => o.id === l.orgId)?.area || "예: 고양시 덕양구"}
+              value={l.area ?? ""}
+              onChange={(e) => set("area", e.target.value)}
+            />
+          </label>
+          <label className="label">
+            사업·의뢰처
+            <input className="input" placeholder="예: 교육청 사업, 학교 직접 의뢰" value={l.source ?? ""} onChange={(e) => set("source", e.target.value)} />
+          </label>
+          <label className="label">
             과목
             <select className="input" value={l.subject} onChange={(e) => set("subject", e.target.value)}>
               {Array.from(new Set(data.curricula.map((c) => c.subject))).map((s) => (
@@ -90,6 +105,10 @@ export default function LectureEditor({
           <label className="label">
             장소
             <input className="input" placeholder="비워 두면 '기관명 각 교실'" value={l.place} onChange={(e) => set("place", e.target.value)} />
+          </label>
+          <label className="label">
+            교시·시간
+            <input className="input" placeholder="예: 3~4교시 (10:00~11:20)" value={l.period ?? ""} onChange={(e) => set("period", e.target.value)} />
           </label>
           <div className="grid grid-cols-2 gap-3">
             <label className="label">
@@ -142,6 +161,39 @@ export default function LectureEditor({
               })}
             </div>
           </div>
+          {picked.length > 0 && (
+            <div className="label sm:col-span-2">
+              강사별 차시 (강의 전체는 {l.sessions}차시 · 다르게 맡는 강사만 바꾸세요)
+              <div className="flex flex-wrap gap-2">
+                {picked.map((i) => {
+                  const n = l.units?.[i.id] ?? l.sessions;
+                  return (
+                    <label key={i.id} className={`flex items-center gap-1.5 rounded border px-2 py-1 text-sm ${n !== l.sessions ? "border-accent bg-accent-soft" : "border-line bg-bg"}`}>
+                      <span className="text-ink">{i.name}</span>
+                      <input
+                        className="input w-14 py-0.5 text-right"
+                        type="number"
+                        min={0}
+                        max={8}
+                        aria-label={`${i.name} 차시`}
+                        value={n}
+                        onChange={(e) => {
+                          const v = Math.max(0, Number(e.target.value) || 0);
+                          setL((x) => {
+                            const units = { ...(x.units ?? {}) };
+                            if (v === x.sessions) delete units[i.id];
+                            else units[i.id] = v;
+                            return { ...x, units };
+                          });
+                        }}
+                      />
+                      <span className="text-muted">차시</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           {picked.length > 0 && (
             <label className="label">
               대표 강사
