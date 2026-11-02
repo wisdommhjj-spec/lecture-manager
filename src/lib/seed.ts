@@ -148,6 +148,19 @@ export function demoData(): AppData {
   }));
   return {
     version: 1,
+    assignOrder: instructors.map((i) => i.name).join(", "),
+    meetingGuide: "기쁨후원(지각, 5,000원)  감사후원(결석, 10,000원) : 가상은행 000-00-000000 (홍길동, 데모용)",
+    meetings: [
+      {
+        id: "2026-11-02", date: "2026-11-02", time: "10:00",
+        guide: "기쁨후원(지각, 5,000원)  감사후원(결석, 10,000원) : 가상은행 000-00-000000 (홍길동, 데모용)",
+        agenda: [
+          { title: "11월 출강 일정 공유", body: "11/4 가람초 3학년, 11/6 나래초 4학년 등 이번 달 일정을 확인합니다.\n배정이 비어 있는 일정은 순번대로 신청합니다." },
+          { title: "정산 방식 안내", body: "후원금 비율과 입금일 기록 방법을 다시 안내합니다." },
+        ],
+        notes: "다음 회의: 11월 9일",
+      },
+    ],
     instructors,
     orgs: DEMO_ORGS,
     lectures: DEMO_LECTURES,

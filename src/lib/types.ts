@@ -103,6 +103,16 @@ export interface Settings {
   corpAccountCopy?: StoredFile;
 }
 
+/** 정기회의 안건 (날짜 하나에 회의 하나, id = 날짜) */
+export interface Meeting {
+  id: string; // yyyy-mm-dd
+  date: string;
+  time: string; // 예: 10:00
+  guide: string; // 모임 안내 문구
+  agenda: { title: string; body: string }[];
+  notes: string;
+}
+
 export interface AppData {
   version: number;
   instructors: Instructor[];
@@ -110,6 +120,9 @@ export interface AppData {
   lectures: Lecture[];
   curricula: Curriculum[];
   settings: Settings;
+  meetings?: Meeting[];
+  assignOrder?: string; // 강사 배정 순번 (쉼표로 구분한 이름)
+  meetingGuide?: string; // 새 회의에 기본으로 넣는 모임 안내
 }
 
 /** 서류 패키지 화면에서 확정하는 강의계획서 (일정 + 과목 내용 묶음 + 수정) */
