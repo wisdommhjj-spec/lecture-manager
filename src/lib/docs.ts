@@ -3,7 +3,7 @@ import {
   Table, TableCell, TableRow, TextRun, VerticalAlign, WidthType,
 } from "docx";
 import type { AppData, Instructor, Lecture, LessonPlan } from "./types";
-import { dateLabel, feeTotal, instructorsOf, orgOf, won } from "./package";
+import { dateLabel, feeTotal, totalUnits, instructorsOf, orgOf, won } from "./package";
 
 // 학교에서 열어 보기 쉽게 워드(.docx)로 만듭니다. 한글(HWP)에서도 열립니다.
 
@@ -87,7 +87,7 @@ export function quoteDocx(data: AppData, l: Lecture) {
   const c = data.settings.company;
   const org = orgOf(data, l);
   const n = l.instructorIds.length;
-  const qty = n * l.sessions;
+  const qty = totalUnits(l);
   const total = feeTotal(l);
   const today = new Date();
   const issued = `${today.getFullYear()}. ${today.getMonth() + 1}. ${today.getDate()}.`;

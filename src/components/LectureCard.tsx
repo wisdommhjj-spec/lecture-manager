@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { OrgButton } from "./LectureEditorHost";
 import type { AppData, Lecture } from "@/lib/types";
 import { WEEK, docStatus, feeTotal, orgOf, shortInstructors, won, type DocStatus } from "@/lib/package";
 
@@ -23,7 +24,7 @@ const dayOf = (iso: string) => {
 };
 
 /** PC 화면: 업무용 표 */
-export function LectureTable({ data, list, onEdit }: { data: AppData; list: Lecture[]; onEdit?: (l: Lecture) => void }) {
+export function LectureTable({ data, list }: { data: AppData; list: Lecture[] }) {
   return (
     <div className="card overflow-x-auto p-0">
       <table className="tbl">
@@ -46,8 +47,13 @@ export function LectureTable({ data, list, onEdit }: { data: AppData; list: Lect
             return (
               <tr key={l.id}>
                 <td className="whitespace-nowrap tabular-nums">{dayOf(l.date)}</td>
-                <td className="font-bold whitespace-nowrap">{orgOf(data, l)?.name ?? "기관 미정"}</td>
-                <td className="whitespace-nowrap">{l.target}</td>
+                <td className="whitespace-nowrap">
+                  <OrgButton id={l.id}>{orgOf(data, l)?.name ?? "기관 미정"}</OrgButton>
+                </td>
+                <td className="whitespace-nowrap">
+                  {l.target}
+                  {l.period && <div className="text-xs text-muted">{l.period}</div>}
+                </td>
                 <td className="whitespace-nowrap">
                   {l.subject} <span className="text-muted">{l.sessions}차시</span>
                 </td>
@@ -58,11 +64,6 @@ export function LectureTable({ data, list, onEdit }: { data: AppData; list: Lect
                   <StatusDot s={docStatus(data, l)} />
                 </td>
                 <td className="text-right whitespace-nowrap">
-                  {onEdit && (
-                    <button className="mr-3 text-muted hover:text-ink" onClick={() => onEdit(l)}>
-                      수정
-                    </button>
-                  )}
                   <Link className="font-semibold text-accent hover:underline" href={`/package/${l.id}`}>
                     서류 패키지
                   </Link>
@@ -77,25 +78,22 @@ export function LectureTable({ data, list, onEdit }: { data: AppData; list: Lect
 }
 
 /** 휴대폰 화면: 카드 + 큰 버튼 */
-export default function LectureCard({ data, l, onEdit }: { data: AppData; l: Lecture; onEdit?: () => void }) {
+export default function LectureCard({ data, l }: { data: AppData; l: Lecture }) {
   const s = docStatus(data, l);
   const fee = feeTotal(l);
   return (
     <article className="rounded-xl border border-line bg-surface p-4">
       <div className="flex items-center justify-between gap-2">
-        <b className="text-[15.5px]">{orgOf(data, l)?.name ?? "기관 미정"}</b>
+        <OrgButton id={l.id} className="text-[15.5px]">
+          {orgOf(data, l)?.name ?? "기관 미정"}
+        </OrgButton>
         <span className={`rounded-md px-2 py-0.5 text-[11.5px] font-bold ${CHIP[s.kind]}`}>{s.label}</span>
       </div>
       <div className="mt-1 text-[12.5px] text-muted">
-        {dayOf(l.date)} · {l.target} {l.sessions}차시 · {shortInstructors(data, l)} · {won(fee)}
+        {dayOf(l.date)} · {l.target} {l.sessions}차시{l.period ? ` (${l.period})` : ""} · {shortInstructors(data, l)} · {won(fee)}
       </div>
       {s.note && <div className="mt-1.5 text-xs text-bad">⚠ {s.note}</div>}
       <div className="mt-3 flex gap-2">
-        {onEdit && (
-          <button className="flex-1 rounded-lg bg-[#f2f4f6] py-2.5 font-bold text-[#333]" onClick={onEdit}>
-            {s.kind === "check" ? "고치기" : "수정"}
-          </button>
-        )}
         <Link
           href={`/package/${l.id}`}
           className={`flex-[2] rounded-lg py-2.5 text-center font-bold ${s.kind === "sent" ? "bg-[#f2f4f6] text-[#333]" : "bg-accent text-white"}`}
@@ -108,16 +106,16 @@ export default function LectureCard({ data, l, onEdit }: { data: AppData; l: Lec
 }
 
 /** PC는 표, 휴대폰은 카드로 */
-export function LectureList({ data, list, onEdit, empty }: { data: AppData; list: Lecture[]; onEdit?: (l: Lecture) => void; empty: string }) {
+export function LectureList({ data, list, empty }: { data: AppData; list: Lecture[]; empty: string }) {
   if (!list.length) return <div className="card text-center text-muted">{empty}</div>;
   return (
     <>
       <div className="hidden md:block">
-        <LectureTable data={data} list={list} onEdit={onEdit} />
+        <LectureTable data={data} list={list} />
       </div>
       <div className="grid gap-2.5 md:hidden">
         {list.map((l) => (
-          <LectureCard key={l.id} data={data} l={l} onEdit={onEdit ? () => onEdit(l) : undefined} />
+          <LectureCard key={l.id} data={data} l={l} />
         ))}
       </div>
     </>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { StoreProvider } from "@/lib/store";
 import Nav from "@/components/Nav";
+import { LectureEditorProvider } from "@/components/LectureEditorHost";
 
 export const metadata: Metadata = {
   title: "출강매니저",
@@ -19,7 +20,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body className="antialiased">
         <StoreProvider>
-          <Nav>{children}</Nav>
+          <LectureEditorProvider>
+            <Nav>{children}</Nav>
+          </LectureEditorProvider>
         </StoreProvider>
       </body>
     </html>

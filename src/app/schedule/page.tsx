@@ -6,7 +6,7 @@ import { useStore } from "@/lib/store";
 import type { Lecture } from "@/lib/types";
 import { WEEK, instructorsOf, orgOf } from "@/lib/package";
 import { LectureList } from "@/components/LectureCard";
-import LectureEditor, { blankLecture } from "@/components/LectureEditor";
+import { useLectureEditor } from "@/components/LectureEditorHost";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const todayIso = () => new Date().toISOString().slice(0, 10);
@@ -18,7 +18,7 @@ function addMonths(m: string, n: number) {
 }
 
 function Schedule() {
-  const { data, update } = useStore();
+  const { data } = useStore();
   const router = useRouter();
   const params = useSearchParams();
   const [view, setView] = useState<"list" | "cal">("list");
@@ -26,15 +26,16 @@ function Schedule() {
   const [cal, setCal] = useState(todayIso().slice(0, 7));
   const [sel, setSel] = useState(todayIso());
   const [q, setQ] = useState("");
-  const [editing, setEditing] = useState<{ l: Lecture; isNew: boolean } | null>(null);
+  const ed = useLectureEditor();
 
-  // 다른 화면에서 ?edit=일정ID 또는 ?new=1 로 열 수 있게 합니다.
+  // 다른 화면에서 ?edit=일정ID 또는 ?new=1 로 들어오면 팝업을 열고 주소는 깨끗이 정리합니다.
   useEffect(() => {
     if (!data) return;
     const id = params.get("edit");
-    const l = id && data.lectures.find((x) => x.id === id);
-    if (l) setEditing({ l, isNew: false });
-    else if (params.get("new")) setEditing({ l: blankLecture(data), isNew: true });
+    if (id && data.lectures.some((x) => x.id === id)) ed.edit(id);
+    else if (params.get("new")) ed.create();
+    else return;
+    router.replace("/schedule");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!data, params]);
 
@@ -45,7 +46,7 @@ function Schedule() {
       .filter((l) => m === "all" || l.date.startsWith(m))
       .filter((l) => {
         if (!q) return true;
-        const t = [orgOf(data, l)?.name, l.target, l.subject, l.note, ...instructorsOf(data, l).map((i) => i.name)].join(" ");
+        const t = [orgOf(data, l)?.name, l.area, l.source, l.period, l.target, l.subject, l.note, ...instructorsOf(data, l).map((i) => i.name)].join(" ");
         return t.includes(q);
       })
       .sort((a, b) => a.date.localeCompare(b.date));
@@ -54,24 +55,11 @@ function Schedule() {
   if (!data) return <p className="muted">불러오는 중…</p>;
 
   const months = Array.from(new Set(data.lectures.map((l) => l.date.slice(0, 7)))).sort();
-  const close = () => {
-    setEditing(null);
-    if (params.toString()) router.replace("/schedule");
-  };
-
-  function save(l: Lecture) {
-    update((d) => ({
-      ...d,
-      lectures: d.lectures.some((x) => x.id === l.id) ? d.lectures.map((x) => (x.id === l.id ? l : x)) : [...d.lectures, l],
-    }));
-    close();
-  }
-
   return (
     <div className="grid gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="h1">교육·일정관리</h1>
-        <button className="btn btn-primary" onClick={() => setEditing({ l: blankLecture(data, view === "cal" ? sel : undefined), isNew: true })}>
+        <button className="btn btn-primary" onClick={() => ed.create(view === "cal" ? sel : undefined)}>
           강의의뢰 등록
         </button>
       </div>
@@ -101,30 +89,16 @@ function Schedule() {
       ) : null}
 
       {view === "list" ? (
-        <LectureList data={data} list={list} onEdit={(l) => setEditing({ l, isNew: false })} empty="조건에 맞는 일정이 없습니다." />
+        <LectureList data={data} list={list} empty="조건에 맞는 일정이 없습니다." />
       ) : (
         <div className="grid gap-2">
           <h2 className="h2">
             {Number(sel.slice(5, 7))}월 {Number(sel.slice(8))}일 출강
           </h2>
-          <LectureList data={data} list={list.filter((l) => l.date === sel)} onEdit={(l) => setEditing({ l, isNew: false })} empty="이 날은 출강이 없습니다." />
+          <LectureList data={data} list={list.filter((l) => l.date === sel)} empty="이 날은 출강이 없습니다." />
         </div>
       )}
 
-      {editing && (
-        <LectureEditor
-          key={editing.l.id}
-          data={data}
-          initial={editing.l}
-          isNew={editing.isNew}
-          onClose={close}
-          onSave={save}
-          onDelete={() => {
-            update((d) => ({ ...d, lectures: d.lectures.filter((x) => x.id !== editing.l.id) }));
-            close();
-          }}
-        />
-      )}
     </div>
   );
 }

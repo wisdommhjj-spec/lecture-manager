@@ -25,9 +25,46 @@ export function leadOf(data: AppData, l: Lecture) {
   return data.instructors.find((i) => i.id === l.leadId);
 }
 
-/** 강사료 합계 = 1인 1차시 단가 × 차시 × 투입 인원 */
+export const DEFAULT_DONATION_RATE = 20;
+
+/** 이 강사가 맡은 차시 수 (따로 정하지 않았으면 강의 전체 차시) */
+export function unitsOf(l: Lecture, insId: string) {
+  return l.units?.[insId] ?? l.sessions;
+}
+
+/** 배정 강사 전원의 차시 합 (견적서 수량) */
+export function totalUnits(l: Lecture) {
+  return l.instructorIds.reduce((s, id) => s + unitsOf(l, id), 0);
+}
+
+/** 강사 1인 강사료 = 1차시 단가 × 그 강사의 차시 수 */
+export function feeOf(l: Lecture, insId: string) {
+  return l.unitPrice == null ? null : l.unitPrice * unitsOf(l, insId);
+}
+
+/** 강사료 합계 = 배정 강사 각자의 강사료 합 */
 export function feeTotal(l: Lecture) {
-  return l.unitPrice == null ? null : l.unitPrice * l.sessions * l.instructorIds.length;
+  return l.unitPrice == null ? null : l.unitPrice * totalUnits(l);
+}
+
+/** 후원금 = 강사료 × 비율, 반올림 */
+export function donationOf(fee: number, ratePct: number) {
+  return Math.round((fee * ratePct) / 100);
+}
+
+export const donationRateOf = (data: AppData) => data.settings.donationRate ?? DEFAULT_DONATION_RATE;
+
+export type SettleStatus = "nopay" | "pre" | "wait" | "paid";
+export const SETTLE_LABEL: Record<SettleStatus, string> = {
+  nopay: "단가 미정",
+  pre: "계산서 발행 전",
+  wait: "입금 대기",
+  paid: "입금 완료",
+};
+export function settleStatus(l: Lecture): SettleStatus {
+  if (l.unitPrice == null) return "nopay";
+  if (l.depositDate) return "paid";
+  return l.invoiceDate ? "wait" : "pre";
 }
 
 /** 파일 이름에 쓸 수 없는 문자를 지웁니다. */
