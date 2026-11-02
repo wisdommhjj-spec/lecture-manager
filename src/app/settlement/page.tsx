@@ -7,6 +7,8 @@ import {
 } from "@/lib/package";
 import type { Lecture } from "@/lib/types";
 import PageHead from "@/components/PageHead";
+import PrintPreview from "@/components/PrintPreview";
+import { statementHtml } from "@/lib/statement";
 
 /**
  * 정산관리
@@ -19,6 +21,8 @@ export default function Settlement() {
   const { data, update } = useStore();
   const months = data ? Array.from(new Set(data.lectures.map((l) => l.date.slice(0, 7)))).sort() : [];
   const [m, setM] = useState(() => new Date().toISOString().slice(0, 7));
+  const [tab, setTab] = useState<"collect" | "pay" | "stmt">("collect");
+  const [who, setWho] = useState("all");
   if (!data) return <p className="muted">불러오는 중…</p>;
   const month = months.includes(m) ? m : (months.at(-1) ?? m);
   const rate = donationRateOf(data);
@@ -124,6 +128,21 @@ export default function Settlement() {
         {kpi("단가 미정", `${unk}건`, unk ? "text-bad" : "")}
       </div>
 
+      <div className="flex gap-1 border-b border-line" role="tablist">
+        {([["collect", "입금 관리"], ["pay", "강사별 지급"], ["stmt", "월말 명세서"]] as const).map(([k, label]) => (
+          <button
+            key={k}
+            role="tab"
+            aria-selected={tab === k}
+            onClick={() => setTab(k)}
+            className={`border-b-2 px-3 py-2 text-sm ${tab === k ? "border-accent font-bold text-accent" : "border-transparent text-muted hover:text-ink"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "collect" && (
       <section className="card overflow-x-auto p-0">
         <h2 className="h2 px-4 pt-3 pb-2">출강별 청구</h2>
         <table className="tbl">
@@ -157,12 +176,36 @@ export default function Settlement() {
           </tbody>
         </table>
       </section>
+      )}
 
+      {tab === "stmt" && (
+        <section className="card grid gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="h2">월말 강의료 명세서</h2>
+            <select className="input w-auto" value={who} onChange={(e) => setWho(e.target.value)} aria-label="명세서 강사">
+              <option value="all">전체 강사 ({insIds.length}명, 한 번에 인쇄)</option>
+              {insIds.map((id) => (
+                <option key={id} value={id}>
+                  {name(id)}
+                </option>
+              ))}
+            </select>
+          </div>
+          {insIds.length ? (
+            <PrintPreview html={statementHtml(data, who === "all" || !insIds.includes(who) ? insIds : [who], month)} height={720} />
+          ) : (
+            <p className="muted">이 달에 배정된 강사가 없습니다.</p>
+          )}
+        </section>
+      )}
+
+      {tab === "pay" && (
       <section className="grid gap-3">
-        <h2 className="h2">강사별 명세서</h2>
+        <h2 className="h2">강사별 지급</h2>
         {insIds.map((id) => {
-          let fees = 0, dons = 0;
+          let fees = 0, dons = 0, done = 0;
           byIns.get(id)!.forEach((l) => {
+            if ((l.account === "corp" ? l.payouts : l.donations)?.[id]) done++;
             const f = feeOf(l, id);
             if (f != null) {
               fees += f;
@@ -174,7 +217,7 @@ export default function Settlement() {
               <div className="flex flex-wrap items-baseline justify-between gap-2 px-4 pt-3 pb-2">
                 <b>{name(id)}</b>
                 <span className="text-sm text-muted tabular-nums">
-                  강사료 {won(fees)} · 후원금 {won(dons)} · 법인 지급 대상 {won(sumCorp(byIns.get(id)!, id, rate))}
+                  강사료 {won(fees)} · 후원금 {won(dons)} · 법인 지급 대상 {won(sumCorp(byIns.get(id)!, id, rate))} · 처리 완료 {done}/{byIns.get(id)!.length}건
                 </span>
               </div>
               <table className="tbl">
@@ -228,6 +271,7 @@ export default function Settlement() {
         })}
         {!insIds.length && <p className="muted">이 달에는 출강이 없습니다.</p>}
       </section>
+      )}
       <p className="text-xs text-muted">
         개인계좌 출강은 배정된 강사 모두가 후원금을 납부하는 것으로 계산합니다. 주민번호·계좌번호는 이 화면에 저장하지 않습니다.
       </p>
