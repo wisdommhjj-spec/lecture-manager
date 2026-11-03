@@ -1,5 +1,5 @@
 import type { AppData, Lecture } from "./types";
-import { SETTLE_LABEL, donationOf, donationRateOf, feeOf, orgOf, settleStatus, won } from "./package";
+import { SETTLE_LABEL, donationRateOf, orgOf, payCalc, settleStatus, withholdingCfg, won } from "./package";
 import { esc } from "./print";
 
 /** 강사 한 명의 월말 강의료 명세서 (바움출강관리와 같은 구성) */
@@ -10,20 +10,18 @@ export interface StmtRow {
   l: Lecture;
   fee: number | null;
   don: number | null;
+  tax: number | null;
   net: number | null;
 }
 
 /** 이 달에 강사가 배정된 출강을 계좌 구분(법인/개인)별로 모읍니다. */
 export function stmtCalc(data: AppData, insId: string, month: string) {
-  const rate = donationRateOf(data);
   const g = { corp: [] as StmtRow[], personal: [] as StmtRow[] };
   data.lectures
     .filter((l) => l.date.startsWith(month) && l.instructorIds.includes(insId))
     .sort((a, b) => a.date.localeCompare(b.date))
     .forEach((l) => {
-      const fee = feeOf(l, insId);
-      const don = fee == null ? null : donationOf(fee, rate);
-      g[l.account].push({ l, fee, don, net: fee == null || don == null ? null : fee - don });
+      g[l.account].push({ l, ...payCalc(data, l, insId) });
     });
   return g;
 }
@@ -63,7 +61,9 @@ function body(data: AppData, insId: string, month: string) {
   const rate = donationRateOf(data);
   const g = stmtCalc(data, insId, month);
   const all = [...g.corp, ...g.personal];
-  const sum = (a: StmtRow[], k: "fee" | "don" | "net") => a.reduce((s, e) => s + (e[k] ?? 0), 0);
+  const wh = withholdingCfg(data);
+  const noDon = all.filter((e) => e.l.noDonation).length;
+  const sum = (a: StmtRow[], k: "fee" | "don" | "tax" | "net") => a.reduce((s, e) => s + (e[k] ?? 0), 0);
   const unk = all.filter((e) => e.fee == null).length;
   const ym = `${month.slice(0, 4)}년 ${Number(month.slice(5))}월`;
   const today = new Date().toISOString().slice(0, 10);
@@ -76,24 +76,26 @@ function body(data: AppData, insId: string, month: string) {
   const table = (kind: "corp" | "personal", title: string, desc: string, list: StmtRow[]) => {
     if (!list.length) return "";
     const col = kind === "corp" ? "지급액" : "본인 보유액";
+    const withTax = kind === "corp" && wh.on;
     const rows = list
       .map(
         (e) =>
-          `<tr><td>${md(e.l.date)}</td><td>${esc(orgOf(data, e.l)?.name ?? "")}<br><small>${esc(e.l.target)} · ${e.l.sessions}차시</small></td><td>${e.l.leadId === insId ? "팀장" : "강사"}</td><td class="n">${e.fee == null ? "단가 미정" : won(e.fee)}</td><td class="n">${e.don == null ? "-" : won(e.don)}</td><td class="n">${e.net == null ? "-" : won(e.net)}</td><td>${esc(status(kind, e))}</td></tr>`,
+          `<tr><td>${md(e.l.date)}</td><td>${esc(orgOf(data, e.l)?.name ?? "")}<br><small>${esc(e.l.target)} · ${e.l.sessions}차시</small></td><td>${e.l.leadId === insId ? "팀장" : "강사"}</td><td class="n">${e.fee == null ? "단가 미정" : won(e.fee)}</td><td class="n">${e.don == null ? "-" : e.l.noDonation ? "제외" : won(e.don)}</td>${withTax ? `<td class="n">${e.tax == null ? "-" : won(e.tax)}</td>` : ""}<td class="n">${e.net == null ? "-" : won(e.net)}</td><td>${esc(status(kind, e))}</td></tr>`,
       )
       .join("");
-    return `<h3>${esc(title)}</h3><p class="d">${esc(desc)}</p><table><thead><tr><th>출강일</th><th>기관</th><th>역할</th><th class="n">강사료</th><th class="n">후원금</th><th class="n">${col}</th><th>처리</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="3">소계 ${list.length}건</td><td class="n">${won(sum(list, "fee"))}</td><td class="n">${won(sum(list, "don"))}</td><td class="n">${won(sum(list, "net"))}</td><td></td></tr></tfoot></table>`;
+    return `<h3>${esc(title)}</h3><p class="d">${esc(desc)}</p><table><thead><tr><th>출강일</th><th>기관</th><th>역할</th><th class="n">강사료</th><th class="n">후원금</th>${withTax ? `<th class="n">원천징수 ${wh.rate}%</th>` : ""}<th class="n">${col}</th><th>처리</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="3">소계 ${list.length}건</td><td class="n">${won(sum(list, "fee"))}</td><td class="n">${won(sum(list, "don"))}</td>${withTax ? `<td class="n">${won(sum(list, "tax"))}</td>` : ""}<td class="n">${won(sum(list, "net"))}</td><td></td></tr></tfoot></table>`;
   };
 
   return `<div class="stm"><div class="h"><div><div class="t">강의료 명세서</div><div class="s">${esc(ym)} 출강분</div></div><div class="i">${esc(data.settings.company.name)}<br>작성일 ${today}</div></div>
 <div class="nm"><b>${esc(name)}</b> 강사님</div>
 <table><tbody><tr><th>출강 건수</th><td class="n">${all.length}건</td><th>강사료 합계</th><td class="n">${won(sum(all, "fee"))}</td></tr>
-<tr><th>후원금 (${rate}%)</th><td class="n">${won(sum(all, "don"))}</td><th>후원금 공제 후 금액</th><td class="n">${won(sum(all, "net"))}</td></tr></tbody></table>
-${table("corp", "법인계좌 입금분", "바움이 입금을 받아 후원금을 뺀 금액을 지급합니다.", g.corp)}
+<tr><th>후원금 (${rate}%)</th><td class="n">${won(sum(all, "don"))}</td><th>${wh.on ? "원천징수 " + wh.rate + "% (법인계좌분)" : "원천징수"}</th><td class="n">${wh.on ? won(sum(all, "tax")) : "해당 없음"}</td></tr>
+<tr><th colspan="3">공제 후 금액 합계</th><td class="n">${won(sum(all, "net"))}</td></tr></tbody></table>
+${table("corp", "법인계좌 입금분", wh.on ? "바움이 입금을 받아 후원금과 원천징수를 뺀 금액을 지급합니다." : "바움이 입금을 받아 후원금을 뺀 금액을 지급합니다.", g.corp)}
 ${table("personal", "개인계좌 입금분", "강사님 계좌로 입금된 건입니다. 후원금은 직접 납부해 주세요.", g.personal)}
 ${all.length ? "" : '<p class="d">이 달에 배정된 출강이 없습니다.</p>'}
 <div class="box"><div><span>바움에서 지급받으실 금액 (법인계좌분)</span><b>${won(sum(g.corp, "net"))}</b></div><div><span>직접 납부하실 후원금 (개인계좌분)</span><b>${won(sum(g.personal, "don"))}</b></div></div>
-<div class="fn">${unk ? `단가가 정해지지 않은 ${unk}건은 금액에 포함하지 않았습니다. ` : ""}금액은 원 단위이며, 후원금은 강사료의 ${rate}%입니다.</div></div>`;
+<div class="fn">${unk ? `단가가 정해지지 않은 ${unk}건은 금액에 포함하지 않았습니다. ` : ""}금액은 원 단위이며, 후원금은 강사료의 ${rate}%입니다.${noDon ? ` 후원금 제외 ${noDon}건은 후원금 없이 계산했습니다.` : ""}${wh.on ? ` 원천징수 ${wh.rate}%는 법인계좌로 지급하는 강사료에서 제외했습니다(소득세 3% + 지방소득세 0.3%).` : ""}</div></div>`;
 }
 
 /** 강사 한 명 또는 여러 명(전체)의 명세서를 한 문서로 만듭니다. */

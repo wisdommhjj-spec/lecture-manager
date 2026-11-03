@@ -142,6 +142,10 @@ export default function LectureEditor({
               <option value="personal">강사 개인계좌 (기관 요청 시)</option>
             </select>
           </label>
+          <label className="flex items-center gap-2 text-sm text-ink sm:col-span-2">
+            <input type="checkbox" checked={!!l.noDonation} onChange={(e) => set("noDonation", e.target.checked || undefined)} />
+            후원금 제외 (단가가 낮아 이 출강은 후원금을 받지 않습니다)
+          </label>
           <div className="label sm:col-span-2">
             강사 배정 ({picked.length}명) · 누르면 선택/해제
             <div className="flex flex-wrap gap-1.5">
