@@ -24,7 +24,7 @@ export function blankLecture(data: AppData, date?: string): Lecture {
 }
 
 export default function LectureEditor({
-  data, initial, isNew, onSave, onDelete, onClose,
+  data, initial, isNew, onSave, onDelete, onClose, onReport,
 }: {
   data: AppData;
   initial: Lecture;
@@ -32,6 +32,7 @@ export default function LectureEditor({
   onSave: (l: Lecture) => void;
   onDelete: () => void;
   onClose: () => void;
+  onReport?: (id: string) => void;
 }) {
   const [l, setL] = useState<Lecture>(initial);
   const [err, setErr] = useState("");
@@ -231,6 +232,11 @@ export default function LectureEditor({
         <p className="mt-2 min-h-5 text-sm text-bad">{err}</p>
         {!isNew && (
           <div className="mt-1 flex flex-wrap items-center gap-2 rounded border border-line bg-bg px-3 py-2 text-sm">
+            {onReport && (
+              <button type="button" className="btn btn-sm" onClick={() => onReport(l.id)}>
+                {data.reports?.some((r) => r.id === l.id) ? "보고서 보기" : "보고서 작성"}
+              </button>
+            )}
             <button type="button" className="btn btn-sm" onClick={() => setInvOpen((v) => !v)} aria-expanded={invOpen}>
               계산서 발행
             </button>

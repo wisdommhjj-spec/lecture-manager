@@ -5,13 +5,12 @@ import { useStore } from "@/lib/store";
 import { addDays, agendaHtml, scheduleHtml } from "@/lib/print";
 import type { Meeting } from "@/lib/types";
 import PageHead from "@/components/PageHead";
+import { ReportChip } from "@/components/LectureEditorHost";
+import { dateLabel, orgOf } from "@/lib/package";
 import PrintPreview from "@/components/PrintPreview";
 
 const today = () => new Date().toISOString().slice(0, 10);
-const LATER = [
-  ["업무 할 일", "서류 발송, 정산, 강사 연락 같은 할 일을 담당자별로 나눠 관리합니다."],
-  ["강의 활동 보고서", "강사가 출강 후 강의 내용과 활동 사진을 올리고, 기관별로 모아 봅니다."],
-];
+const LATER = [["업무 할 일", "서류 발송, 정산, 강사 연락 같은 할 일을 담당자별로 나눠 관리합니다."]];
 
 export default function Meetings() {
   const { data, update } = useStore();
@@ -25,6 +24,10 @@ export default function Meetings() {
   const [msg, setMsg] = useState("");
   if (!data) return <p className="muted">불러오는 중…</p>;
 
+  const todayIso = today();
+  const missing = data.lectures
+    .filter((l) => l.date <= todayIso && l.instructorIds.length && !data.reports?.some((r) => r.id === l.id))
+    .sort((a, b) => b.date.localeCompare(a.date));
   const list = [...(data.meetings ?? [])].sort((a, b) => b.date.localeCompare(a.date));
   const blank = (): Meeting => ({
     id: "", date: today(), time: list[0]?.time ?? "", guide: data.meetingGuide ?? "",
@@ -165,6 +168,48 @@ export default function Meetings() {
               </div>
             </div>
             {showAgenda && <PrintPreview html={agendaHtml(data, { ...draft, id: draft.date })} />}
+          </div>
+        )}
+      </section>
+
+      <section className="card grid gap-2">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="h2">강의 활동 보고서</h2>
+          <span className="text-sm text-muted">
+            작성 {data.reports?.length ?? 0}건 · 지난 출강 중 미작성 {missing.length}건
+          </span>
+        </div>
+        <p className="text-sm text-muted">출강이 끝나면 보고서를 남겨 두면 같은 기관에 다시 갈 때 참고할 수 있습니다. 기관관리에서 기관별로 모아 볼 수 있습니다.</p>
+        {missing.length > 0 && (
+          <div className="grid gap-1">
+            <b className="text-sm">작성이 필요한 지난 출강</b>
+            {missing.slice(0, 8).map((l) => (
+              <div key={l.id} className="flex items-center justify-between gap-2 text-sm">
+                <span>
+                  {dateLabel(l.date)} {orgOf(data, l)?.name} · {l.target}
+                </span>
+                <ReportChip id={l.id} date={l.date} />
+              </div>
+            ))}
+          </div>
+        )}
+        {(data.reports?.length ?? 0) > 0 && (
+          <div className="grid gap-1 border-t border-line pt-2">
+            <b className="text-sm">최근 작성한 보고서</b>
+            {[...(data.reports ?? [])]
+              .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+              .slice(0, 8)
+              .map((r) => {
+                const l = data.lectures.find((x) => x.id === r.id);
+                return (
+                  <div key={r.id} className="flex items-center justify-between gap-2 text-sm">
+                    <span>
+                      {l ? `${dateLabel(l.date)} ${orgOf(data, l)?.name}` : "삭제된 출강"} · {r.topic || "주제 없음"}
+                    </span>
+                    {l && <ReportChip id={l.id} date={l.date} />}
+                  </div>
+                );
+              })}
           </div>
         )}
       </section>

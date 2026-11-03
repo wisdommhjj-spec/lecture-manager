@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { OrgButton } from "./LectureEditorHost";
+import { OrgButton, ReportChip } from "./LectureEditorHost";
 import type { AppData, Lecture } from "@/lib/types";
 import { WEEK, docStatus, feeTotal, orgOf, shortInstructors, won, type DocStatus } from "@/lib/package";
 
@@ -64,6 +64,9 @@ export function LectureTable({ data, list }: { data: AppData; list: Lecture[] })
                   <StatusDot s={docStatus(data, l)} />
                 </td>
                 <td className="text-right whitespace-nowrap">
+                  <span className="mr-3 inline-block align-middle">
+                    <ReportChip id={l.id} date={l.date} />
+                  </span>
                   <Link className="font-semibold text-accent hover:underline" href={`/package/${l.id}`}>
                     서류 패키지
                   </Link>
@@ -87,7 +90,10 @@ export default function LectureCard({ data, l }: { data: AppData; l: Lecture }) 
         <OrgButton id={l.id} className="text-[15.5px]">
           {orgOf(data, l)?.name ?? "기관 미정"}
         </OrgButton>
-        <span className={`rounded-md px-2 py-0.5 text-[11.5px] font-bold ${CHIP[s.kind]}`}>{s.label}</span>
+        <span className="flex items-center gap-1.5">
+          <ReportChip id={l.id} date={l.date} />
+          <span className={`rounded-md px-2 py-0.5 text-[11.5px] font-bold ${CHIP[s.kind]}`}>{s.label}</span>
+        </span>
       </div>
       <div className="mt-1 text-[12.5px] text-muted">
         {dayOf(l.date)} · {l.target} {l.sessions}차시{l.period ? ` (${l.period})` : ""} · {shortInstructors(data, l)} · {won(fee)}

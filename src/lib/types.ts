@@ -108,6 +108,28 @@ export interface Settings {
   corpAccountCopy?: StoredFile;
 }
 
+/** 강의 활동 보고서 (출강 1건에 1개, id = 일정 ID) */
+export interface ReportGrade {
+  grade: string; // 학년
+  classes: string; // 학급 수
+  per: string; // 반 학생 수
+  rounds: string; // 차시
+  inst: string; // 강사 (쉼표로 구분)
+}
+export interface Report {
+  id: string;
+  topic: string; // 강의 주제
+  teacher: string; // 담당교사
+  teacherTel: string;
+  teacherEmail: string;
+  content: string; // 강의 내용 (재출강 때 참고)
+  notes: string; // 특이사항
+  grades: ReportGrade[];
+  links: { label: string; url: string }[]; // 강의자료는 파일 대신 링크
+  photos: string[]; // 줄인 사진(data URL), 최대 3장
+  updatedAt: string;
+}
+
 /** 정기회의 안건 (날짜 하나에 회의 하나, id = 날짜) */
 export interface Meeting {
   id: string; // yyyy-mm-dd
@@ -126,6 +148,7 @@ export interface AppData {
   curricula: Curriculum[];
   settings: Settings;
   meetings?: Meeting[];
+  reports?: Report[];
   assignOrder?: string; // 강사 배정 순번 (쉼표로 구분한 이름)
   meetingGuide?: string; // 새 회의에 기본으로 넣는 모임 안내
 }

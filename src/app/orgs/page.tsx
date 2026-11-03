@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { uid, useStore } from "@/lib/store";
+import { ReportChip } from "@/components/LectureEditorHost";
 import type { Org } from "@/lib/types";
 
 export default function Orgs() {
   const { data, update } = useStore();
+  const [open, setOpen] = useState<Record<string, boolean>>({});
   if (!data) return <p className="muted">불러오는 중…</p>;
 
   const setOrg = (id: string, patch: Partial<Org>) =>
@@ -56,6 +59,32 @@ export default function Orgs() {
                 <span>출강 {ls.length}회</span>
                 <span>{next ? `다음 출강 ${next.date.slice(5).replace("-", "/")}` : "예정 없음"}</span>
               </div>
+              {ls.length > 0 && (
+                <div className="grid gap-1 border-t border-line pt-2">
+                  <span className="text-xs font-bold text-accent">재출강 참고 · 지난 강의</span>
+                  {[...ls]
+                    .sort((a, b) => b.date.localeCompare(a.date))
+                    .slice(0, open[o.id] ? undefined : 3)
+                    .map((l) => {
+                      const rp = data.reports?.find((r) => r.id === l.id);
+                      return (
+                        <div key={l.id} className="flex items-start gap-2 text-xs">
+                          <span className="w-10 shrink-0 text-muted tabular-nums">{l.date.slice(5).replace("-", ".")}</span>
+                          <span className="min-w-0 flex-1">
+                            {[l.target, rp?.topic || l.subject].filter(Boolean).join(" · ")}
+                            {rp?.content && <span className="block text-muted">{rp.content.replace(/\s+/g, " ").slice(0, 60)}{rp.content.length > 60 ? "…" : ""}</span>}
+                          </span>
+                          <ReportChip id={l.id} date={l.date} />
+                        </div>
+                      );
+                    })}
+                  {ls.length > 3 && (
+                    <button className="btn btn-sm justify-self-start" onClick={() => setOpen((x) => ({ ...x, [o.id]: !x[o.id] }))}>
+                      {open[o.id] ? "접기" : `전체 ${ls.length}회 보기`}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
