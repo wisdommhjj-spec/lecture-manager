@@ -46,7 +46,8 @@ function Schedule() {
       .filter((l) => m === "all" || l.date.startsWith(m))
       .filter((l) => {
         if (!q) return true;
-        const t = [orgOf(data, l)?.name, l.area, l.source, l.period, l.target, l.subject, l.note, ...instructorsOf(data, l).map((i) => i.name)].join(" ");
+        const rp = data.reports?.find((r) => r.id === l.id);
+        const t = [orgOf(data, l)?.name, l.area, l.source, l.period, l.target, l.subject, l.note, rp?.topic, rp?.teacher, rp?.content, rp?.notes, ...instructorsOf(data, l).map((i) => i.name)].join(" ");
         return t.includes(q);
       })
       .sort((a, b) => a.date.localeCompare(b.date));
@@ -81,7 +82,7 @@ function Schedule() {
             ))}
           </select>
         )}
-        <input className="input flex-1 basis-48" type="search" placeholder="기관, 대상, 과목, 강사 검색" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className="input flex-1 basis-48" type="search" placeholder="기관, 대상, 과목, 강사, 보고서 내용 검색" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
 
       {view === "cal" ? (
