@@ -52,6 +52,34 @@ export function donationOf(fee: number, ratePct: number) {
   return Math.round((fee * ratePct) / 100);
 }
 
+export const DEFAULT_WITHHOLDING = { on: true, rate: 3.3 };
+export const withholdingCfg = (data: AppData) => data.settings.withholding ?? DEFAULT_WITHHOLDING;
+
+/**
+ * 원천징수(사업소득 3.3% = 소득세 3% + 지방소득세 0.3%).
+ * 소득세는 원 미만 절사, 지방소득세는 소득세의 10%를 10원 미만 절사로 계산합니다.
+ */
+export function withholdingOf(fee: number, ratePct: number) {
+  const income = Math.floor((fee * ratePct) / 110 + 1e-9); // 3.3% → 소득세율 3%
+  const local = Math.floor((income * 0.1) / 10) * 10;
+  return income + local;
+}
+
+/**
+ * 강사 한 명의 한 출강 정산.
+ * - 후원금: 강사료 × 비율 (출강에 '후원금 제외'를 켜면 0)
+ * - 원천징수: 법인계좌로 조합이 강사에게 지급할 때만 강사료에서 제외 (개인계좌는 기관이 직접 지급하므로 계산하지 않음)
+ * - net: 법인계좌면 강사에게 지급할 금액, 개인계좌면 강사가 보유하는 금액
+ */
+export function payCalc(data: AppData, l: Lecture, insId: string) {
+  const fee = feeOf(l, insId);
+  if (fee == null) return { fee: null, don: null, tax: null, net: null };
+  const don = l.noDonation ? 0 : donationOf(fee, donationRateOf(data));
+  const w = withholdingCfg(data);
+  const tax = l.account === "corp" && w.on ? withholdingOf(fee, w.rate) : 0;
+  return { fee, don, tax, net: fee - don - tax };
+}
+
 export const donationRateOf = (data: AppData) => data.settings.donationRate ?? DEFAULT_DONATION_RATE;
 
 export type SettleStatus = "nopay" | "pre" | "wait" | "paid";

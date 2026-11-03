@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import {
-  SETTLE_LABEL, donationOf, donationRateOf, feeOf, feeTotal, orgOf, settleStatus, unitsOf, won,
+  SETTLE_LABEL, donationRateOf, feeTotal, orgOf, payCalc, settleStatus, unitsOf, withholdingCfg, won,
 } from "@/lib/package";
-import type { Lecture } from "@/lib/types";
+import type { AppData, Lecture } from "@/lib/types";
 import PageHead from "@/components/PageHead";
 import PrintPreview from "@/components/PrintPreview";
 import { OrgButton } from "@/components/LectureEditorHost";
@@ -28,6 +28,7 @@ export default function Settlement() {
   if (!data) return <p className="muted">불러오는 중…</p>;
   const month = m === "all" || months.includes(m) ? m : (months.at(-1) ?? m);
   const rate = donationRateOf(data);
+  const wh = withholdingCfg(data);
 
   const name = (id: string) => data.instructors.find((i) => i.id === id)?.name ?? id;
   // 검색: 기관, 대상, 과목, 장소, 강사 이름, 계좌(법인/개인), 상태, 메모 중 하나라도 포함하면 보입니다. 띄어쓰기로 여러 단어를 쓰면 모두 포함된 건만 남습니다.
@@ -59,12 +60,16 @@ export default function Settlement() {
     patch(id, (l) => ({ ...l, units: { ...(l.units ?? {}), [insId]: Math.max(0, n) } }));
 
   // 월 합계
-  let total = 0, donation = 0, unk = 0, pre = 0, wait = 0;
+  let total = 0, donation = 0, tax = 0, unk = 0, pre = 0, wait = 0;
   ls.forEach((l) => {
     const t = feeTotal(l);
     if (t == null) return void unk++;
     total += t;
-    l.instructorIds.forEach((id) => (donation += donationOf(feeOf(l, id) ?? 0, rate)));
+    l.instructorIds.forEach((id) => {
+      const c = payCalc(data, l, id);
+      donation += c.don ?? 0;
+      tax += c.tax ?? 0;
+    });
     const st = settleStatus(l);
     if (st === "pre") pre++;
     if (st === "wait") wait++;
@@ -77,17 +82,16 @@ export default function Settlement() {
 
   function csv() {
     const rows: (string | number)[][] = [
-      ["출강일", "기관", "지역·구", "사업·의뢰처", "교시·시간", "강사", "차시", "1차시 단가", "강사료", `후원금(${rate}%)`, "계좌", "지급/납부 금액", "지급/납부일", "계산서 발행일", "입금일", "상태"],
+      ["출강일", "기관", "지역·구", "사업·의뢰처", "교시·시간", "강사", "차시", "1차시 단가", "강사료", `후원금(${rate}%)`, `원천징수(${wh.rate}%)`, "계좌", "지급/납부 금액", "지급/납부일", "계산서 발행일", "입금일", "상태"],
     ];
     ls.forEach((l) =>
       l.instructorIds.forEach((id) => {
-        const fee = feeOf(l, id);
-        const don = fee == null ? null : donationOf(fee, rate);
+        const { fee, don, tax: wtax, net } = payCalc(data!, l, id);
         const corp = l.account === "corp";
         rows.push([
-          l.date, orgOf(data!, l)?.name ?? "", l.area ?? orgOf(data!, l)?.area ?? "", l.source ?? "", l.period ?? "", name(id), unitsOf(l, id), l.unitPrice ?? "", fee ?? "", don ?? "",
+          l.date, orgOf(data!, l)?.name ?? "", l.area ?? orgOf(data!, l)?.area ?? "", l.source ?? "", l.period ?? "", name(id), unitsOf(l, id), l.unitPrice ?? "", fee ?? "", don ?? "", wtax ?? "",
           corp ? "법인" : "개인",
-          fee == null || don == null ? "" : corp ? fee - don : don,
+          fee == null || don == null || net == null ? "" : corp ? net : don,
           (corp ? l.payouts?.[id] : l.donations?.[id]) ?? "",
           l.invoiceDate ?? "", l.depositDate ?? "", SETTLE_LABEL[settleStatus(l)],
         ]);
@@ -143,13 +147,33 @@ export default function Settlement() {
           </div>
         }
       />
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         {kpi("출강", `${ls.length}건`)}
         {kpi("강사료 합계", won(total))}
         {kpi(`후원금 (${rate}%)`, won(donation))}
+        {kpi(wh.on ? `원천징수 (${wh.rate}%, 법인 지급분)` : "원천징수", wh.on ? won(tax) : "제외 안 함")}
         {kpi("계산서 발행 전 / 입금 대기", `${pre}건 / ${wait}건`, pre + wait ? "text-warn" : "")}
         {kpi("단가 미정", `${unk}건`, unk ? "text-bad" : "")}
       </div>
+
+      <label className="flex flex-wrap items-center gap-2 text-sm text-ink">
+        <input
+          type="checkbox"
+          checked={wh.on}
+          onChange={(e) => update((d) => ({ ...d, settings: { ...d.settings, withholding: { ...withholdingCfg(d), on: e.target.checked } } }))}
+        />
+        법인계좌 강사료 지급 시 원천징수
+        <input
+          className="input w-16 py-0.5 text-right"
+          type="number"
+          step={0.1}
+          min={0}
+          aria-label="원천징수 비율"
+          value={wh.rate}
+          onChange={(e) => update((d) => ({ ...d, settings: { ...d.settings, withholding: { ...withholdingCfg(d), rate: Number(e.target.value) || 0 } } }))}
+        />
+        % 를 제외하고 정산 <span className="text-xs text-muted">(소득세 3% + 지방소득세 0.3%)</span>
+      </label>
 
       <div className="flex gap-1 border-b border-line" role="tablist">
         {([["collect", "입금 관리"], ["pay", "강사별 지급"], ["stmt", "월말 명세서"]] as const).map(([k, label]) => (
@@ -178,6 +202,7 @@ export default function Settlement() {
               <th>상태</th>
               <th>계산서 발행일</th>
               <th>입금일</th>
+              <th>후원금</th>
             </tr>
           </thead>
           <tbody>
@@ -195,6 +220,16 @@ export default function Settlement() {
                   <td className={`font-medium ${tone(st)}`}>{SETTLE_LABEL[st]}</td>
                   <td>{dateIn(l.invoiceDate, (v) => setDate(l.id, "invoiceDate", v), "계산서 발행일")}</td>
                   <td>{dateIn(l.depositDate, (v) => setDate(l.id, "depositDate", v), "입금일")}</td>
+                  <td>
+                    <button
+                      className={`btn btn-sm whitespace-nowrap ${l.noDonation ? "border-accent bg-accent-soft text-accent" : ""}`}
+                      aria-pressed={!!l.noDonation}
+                      title="단가가 낮아 후원금을 받지 않는 출강이면 눌러 주세요"
+                      onClick={() => patch(l.id, (x) => ({ ...x, noDonation: x.noDonation ? undefined : true }))}
+                    >
+                      {l.noDonation ? "후원금 제외됨" : "후원금 제외"}
+                    </button>
+                  </td>
                 </tr>
               );
             })}
@@ -230,21 +265,20 @@ export default function Settlement() {
       <section className="grid gap-3">
         <h2 className="h2">강사별 지급</h2>
         {insIds.map((id) => {
-          let fees = 0, dons = 0, done = 0;
+          let fees = 0, dons = 0, taxes = 0, done = 0;
           byIns.get(id)!.forEach((l) => {
             if ((l.account === "corp" ? l.payouts : l.donations)?.[id]) done++;
-            const f = feeOf(l, id);
-            if (f != null) {
-              fees += f;
-              dons += donationOf(f, rate);
-            }
+            const c = payCalc(data, l, id);
+            fees += c.fee ?? 0;
+            dons += c.don ?? 0;
+            taxes += c.tax ?? 0;
           });
           return (
             <div key={id} className="card overflow-x-auto p-0">
               <div className="flex flex-wrap items-baseline justify-between gap-2 px-4 pt-3 pb-2">
                 <b>{name(id)}</b>
                 <span className="text-sm text-muted tabular-nums">
-                  강사료 {won(fees)} · 후원금 {won(dons)} · 법인 지급 대상 {won(sumCorp(byIns.get(id)!, id, rate))} · 처리 완료 {done}/{byIns.get(id)!.length}건
+                  강사료 {won(fees)} · 후원금 {won(dons)}{wh.on && ` · 원천징수 ${won(taxes)}`} · 법인 지급 대상 {won(sumCorp(data, byIns.get(id)!, id))} · 처리 완료 {done}/{byIns.get(id)!.length}건
                 </span>
               </div>
               <table className="tbl">
@@ -255,6 +289,7 @@ export default function Settlement() {
                     <th className="text-right">차시</th>
                     <th className="text-right">강사료</th>
                     <th className="text-right">후원금</th>
+                    {wh.on && <th className="text-right">원천징수</th>}
                     <th>구분</th>
                     <th className="text-right">금액</th>
                     <th>날짜</th>
@@ -262,8 +297,7 @@ export default function Settlement() {
                 </thead>
                 <tbody>
                   {byIns.get(id)!.map((l) => {
-                    const fee = feeOf(l, id);
-                    const don = fee == null ? null : donationOf(fee, rate);
+                    const { fee, don, tax: wtax, net } = payCalc(data, l, id);
                     const corp = l.account === "corp";
                     return (
                       <tr key={l.id}>
@@ -282,9 +316,10 @@ export default function Settlement() {
                           />
                         </td>
                         <td className="text-right tabular-nums">{won(fee)}</td>
-                        <td className="text-right tabular-nums">{won(don)}</td>
+                        <td className="text-right tabular-nums">{l.noDonation ? <span className="text-muted">제외</span> : won(don)}</td>
+                        {wh.on && <td className="text-right tabular-nums">{corp ? won(wtax) : <span className="text-muted">-</span>}</td>}
                         <td>{corp ? "법인 지급" : "후원금 납부"}</td>
-                        <td className="text-right tabular-nums">{fee == null || don == null ? "-" : won(corp ? fee - don : don)}</td>
+                        <td className="text-right tabular-nums">{fee == null || don == null || net == null ? "-" : won(corp ? net : don)}</td>
                         <td>
                           {corp
                             ? dateIn(l.payouts?.[id], (v) => setMap(l.id, "payouts", id, v), "지급일")
@@ -308,10 +343,6 @@ export default function Settlement() {
   );
 }
 
-function sumCorp(ls: Lecture[], id: string, rate: number) {
-  return ls.reduce((s, l) => {
-    if (l.account !== "corp") return s;
-    const f = feeOf(l, id);
-    return f == null ? s : s + f - donationOf(f, rate);
-  }, 0);
+function sumCorp(data: AppData, ls: Lecture[], id: string) {
+  return ls.reduce((s, l) => (l.account === "corp" ? s + (payCalc(data, l, id).net ?? 0) : s), 0);
 }
