@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { uid, useStore } from "@/lib/store";
-import type { Instructor } from "@/lib/types";
+import type { Instructor, Unavail } from "@/lib/types";
+import { unavailText } from "@/lib/assign";
 import { FileUpload } from "@/components/Files";
 
 const blank = (): Instructor => ({
@@ -41,6 +42,7 @@ export default function Instructors() {
               <th>연락처</th>
               <th>이메일</th>
               <th>출강</th>
+              <th>배정 제외 일정</th>
               <th>개인 통장사본</th>
               <th />
             </tr>
@@ -52,6 +54,7 @@ export default function Instructors() {
                 <td className="tabular-nums">{i.phone}</td>
                 <td>{i.email}</td>
                 <td>{count(i.id)}건</td>
+                <td className="text-xs">{i.unavail?.length ? i.unavail.map((u) => unavailText(u)).join(" · ") : <span className="text-muted">없음</span>}</td>
                 <td>{i.accountCopy ? <span className="chip chip-ok">있음</span> : <span className="chip chip-warn">없음</span>}</td>
                 <td>
                   <button className="btn btn-sm" onClick={() => setEdit(i)}>
@@ -76,6 +79,7 @@ function Editor({ initial, onSave, onClose }: { initial: Instructor; onSave: (i:
       <input className="input" placeholder={placeholder} value={String(i[k] ?? "")} onChange={(e) => setI({ ...i, [k]: e.target.value })} />
     </label>
   );
+  const setU = (id: string, patch: Partial<Unavail>) => setI({ ...i, unavail: (i.unavail ?? []).map((u) => (u.id === id ? { ...u, ...patch } : u)) });
   const lines = (k: "education" | "career" | "certificates", label: string) => (
     <label className="label sm:col-span-2">
       {label} (한 줄에 하나)
@@ -98,6 +102,41 @@ function Editor({ initial, onSave, onClose }: { initial: Instructor; onSave: (i:
           {f("bankName", "은행")}
           {f("accountNumber", "계좌번호")}
           <div className="label sm:col-span-2">
+            배정 제외 일정 (이 날은 자동 배정에서 빠집니다 · 사유는 담당자에게만 보임)
+            <div className="grid gap-2">
+              {(i.unavail ?? []).map((u) => (
+                <div key={u.id} className="grid grid-cols-[110px_1fr_1fr_auto] items-center gap-2">
+                  <select className="input" value={u.kind} onChange={(e) => setU(u.id, { kind: e.target.value as Unavail["kind"] })}>
+                    <option value="date">하루</option>
+                    <option value="range">기간</option>
+                    <option value="weekday">매주 요일</option>
+                  </select>
+                  {u.kind === "weekday" ? (
+                    <select className="input" value={u.weekday ?? 1} onChange={(e) => setU(u.id, { weekday: Number(e.target.value) })}>
+                      {["일", "월", "화", "수", "목", "금", "토"].map((w, n) => (
+                        <option key={w} value={n}>{w}요일</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input className="input" type="date" value={u.from ?? ""} onChange={(e) => setU(u.id, { from: e.target.value })} />
+                  )}
+                  {u.kind === "range" ? (
+                    <input className="input" type="date" value={u.to ?? ""} onChange={(e) => setU(u.id, { to: e.target.value })} />
+                  ) : (
+                    <input className="input" placeholder="사유 메모" value={u.note} onChange={(e) => setU(u.id, { note: e.target.value })} />
+                  )}
+                  <button type="button" className="btn btn-sm" onClick={() => setI({ ...i, unavail: (i.unavail ?? []).filter((x) => x.id !== u.id) })}>삭제</button>
+                  {u.kind === "range" && (
+                    <input className="input col-span-4" placeholder="사유 메모" value={u.note} onChange={(e) => setU(u.id, { note: e.target.value })} />
+                  )}
+                </div>
+              ))}
+              <button type="button" className="btn btn-sm justify-self-start" onClick={() => setI({ ...i, unavail: [...(i.unavail ?? []), { id: uid("un"), kind: "date", from: "", note: "" }] })}>
+                제외 일정 추가
+              </button>
+            </div>
+          </div>
+          <div className="label sm:col-span-2">
             개인 통장사본
             <FileUpload label="통장사본" value={i.accountCopy} onChange={(accountCopy) => setI({ ...i, accountCopy })} />
           </div>
@@ -108,7 +147,7 @@ function Editor({ initial, onSave, onClose }: { initial: Instructor; onSave: (i:
           </button>
           <button
             className="btn btn-primary"
-            onClick={() => i.name.trim() && onSave({ ...i, education: i.education.filter(Boolean), career: i.career.filter(Boolean), certificates: i.certificates.filter(Boolean) })}
+            onClick={() => i.name.trim() && onSave({ ...i, education: i.education.filter(Boolean), career: i.career.filter(Boolean), certificates: i.certificates.filter(Boolean), unavail: (i.unavail ?? []).filter((u) => u.kind === "weekday" || u.from) })}
           >
             저장
           </button>

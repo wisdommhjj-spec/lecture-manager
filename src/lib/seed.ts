@@ -8,6 +8,13 @@ const NAMES = [
   "장한결", "임다솜", "한아름", "오누리", "서예린", "신바다", "권소담",
 ];
 
+// 강사 배정 데모용 제외 일정 (모두 지어낸 값)
+const DEMO_UNAVAIL: Record<string, Instructor["unavail"]> = {
+  "ins-1": [{ id: "un-1", kind: "weekday", weekday: 3, note: "정기 수업 (데모)" }],
+  "ins-2": [{ id: "un-2", kind: "range", from: "2026-11-23", to: "2026-11-27", note: "연수 (데모)" }],
+  "ins-3": [{ id: "un-3", kind: "date", from: "2026-11-25", note: "개인 일정 (데모)" }],
+};
+
 export const DEMO_INSTRUCTORS: Instructor[] = NAMES.map((name, i) => ({
   id: `ins-${i + 1}`,
   name,
@@ -20,6 +27,7 @@ export const DEMO_INSTRUCTORS: Instructor[] = NAMES.map((name, i) => ({
   certificates: i % 2 === 0 ? ["성교육 전문강사 자격"] : ["폭력예방교육 전문강사 자격"],
   bankName: ["농협", "국민", "신한", "우리"][i % 4],
   accountNumber: `000-0000-0000-${String(10 + i).padStart(2, "0")}`,
+  unavail: DEMO_UNAVAIL[`ins-${i + 1}`],
 }));
 
 export const DEMO_ORGS: Org[] = [
@@ -102,6 +110,8 @@ export const DEMO_LECTURES: Lecture[] = [
   lec("lec-5", "2026-11-18", "org-5", "4학년", 2, 2, [3], null),
   { ...lec("lec-6", "2026-10-21", "org-1", "4학년", 2, 1, [5, 9], 50000), invoiceDate: "2026-10-23", depositDate: "2026-10-30", units: { "ins-9": 1 }, payouts: { "ins-5": "2026-11-02" } },
   lec("lec-7", "2026-12-02", "org-2", "3학년", 2, 4, [7, 10], 50000),
+  // 강사 배정 데모용: 아직 강사가 정해지지 않은 출강
+  { ...lec("lec-8", "2026-11-25", "org-3", "2학년", 2, 1, [], 50000), leadId: "", instructorIds: [], period: "1~2교시 (09:00~10:20)" },
 ];
 
 /** 브라우저에서 '샘플' 표시가 된 가짜 서류 이미지를 만듭니다. */

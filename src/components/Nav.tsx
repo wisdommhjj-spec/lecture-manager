@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
-  Building2, CalendarDays, ClipboardList, Files, GraduationCap, LayoutGrid, Menu, Settings, Users, Wallet, X,
+  Building2, CalendarDays, ClipboardList, Files, GraduationCap, LayoutGrid, Menu, Settings, UserCheck, Users, Wallet, X,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 
@@ -13,6 +13,7 @@ export const MENU = [
   { href: "/orgs", label: "기관관리", icon: Building2 },
   { href: "/schedule", label: "교육·일정관리", icon: CalendarDays },
   { href: "/instructors", label: "강사관리", icon: Users },
+  { href: "/assign", label: "강사 배정", icon: UserCheck },
   { href: "/documents", label: "행정서류", icon: Files },
   { href: "/settlement", label: "정산관리", icon: Wallet },
   { href: "/meetings", label: "회의록·업무", icon: ClipboardList },

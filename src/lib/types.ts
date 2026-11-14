@@ -19,6 +19,17 @@ export interface Instructor {
   bankName: string;
   accountNumber: string;
   accountCopy?: StoredFile; // 개인 통장사본
+  unavail?: Unavail[]; // 배정에서 제외할 일정 (개인 사정)
+}
+
+/** 강사별 배정 제외 일정: 하루 / 기간 / 매주 요일 */
+export interface Unavail {
+  id: string;
+  kind: "date" | "range" | "weekday";
+  from?: string; // date, range 시작 (yyyy-mm-dd)
+  to?: string; // range 끝
+  weekday?: number; // 0(일)~6(토)
+  note: string; // 사유 메모 (담당자에게만 보임)
 }
 
 export interface Org {
@@ -140,6 +151,35 @@ export interface Meeting {
   notes: string;
 }
 
+/** 강사 배정 (출강 1건에 1개, id = 일정 ID) */
+export type SlotStatus = "offered" | "accepted" | "declined" | "expired";
+export interface AssignSlot {
+  id: string;
+  instructorId: string;
+  locked: boolean; // 담당자가 강제 지정한 강사
+  status: SlotStatus;
+  offeredAt: string; // 안내를 보낸 시각 (ISO)
+  remindedAt?: string; // 재알림 시각
+  respondedAt?: string;
+  reason?: string; // 거절 사유 (필수)
+}
+export interface Assignment {
+  id: string;
+  mode: "auto" | "manual";
+  needed: number; // 필요한 강사 수
+  slots: AssignSlot[];
+  tried: string[]; // 이미 안내했던 강사 (다시 안내하지 않음)
+  startedAt?: string;
+}
+export interface AppNotice {
+  id: string;
+  at: string;
+  to: string; // 강사 id 또는 "operator"(담당자)
+  lectureId: string;
+  kind: "offer" | "reminder" | "expired" | "accepted" | "declined" | "operator";
+  text: string;
+}
+
 export interface AppData {
   version: number;
   instructors: Instructor[];
@@ -151,6 +191,9 @@ export interface AppData {
   reports?: Report[];
   assignOrder?: string; // 강사 배정 순번 (쉼표로 구분한 이름)
   meetingGuide?: string; // 새 회의에 기본으로 넣는 모임 안내
+  assignments?: Assignment[];
+  notices?: AppNotice[]; // 알림 기록 (데모에서는 실제로 보내지 않고 기록만 남김)
+  simNow?: string; // 데모용 가상 시계 (ISO)
 }
 
 /** 서류 패키지 화면에서 확정하는 강의계획서 (일정 + 과목 내용 묶음 + 수정) */
